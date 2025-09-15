@@ -1,4 +1,10 @@
 boy= float(input('boyunuzu giriniz'))
 kilo=  float(input('kilonuzu giriniz'))
 endeks=kilo/(boy*boy)
-print(endeks)
+if 18<=endeks<=24  :
+    print('sağlıklı')
+elif endek>24 :
+    print('sınırda')
+else:
+    print('zayıf')
+
