@@ -1,0 +1,31 @@
+import rehber
+import boy
+import yas
+def ana_menu():
+    while True:
+        print("╔════════════════════════════════╗")
+        print("║                                ║")
+        print("║  1- Gezilen Yerler             ║")
+        print("║  2- Boy Endeks                 ║")
+        print("║  3- Yıl Hesaplayıcı            ║")
+        print("║  4- Çıkış                      ║")
+        print("║                                ║")
+        print("║    Seçiminiz nedir?            ║")
+        print("╚════════════════════════════════╝")
+
+        secim = input(" ")
+
+        if secim == "1":
+           rehber.gezilen_yerler()
+        elif secim == "2":
+            boy.boy_kilo_endeksi()
+        elif secim == "3":
+            yas.yıl_hesaplayıcı()
+        elif secim == "4":
+            print("Çıkış yapılıyor...")
+            break
+        else:
+            print("Geçersiz seçim!")
+
+
+ana_menu()
