@@ -1,5 +1,3 @@
-import turtle
-turtle shape body
 def boy_kilo_endeksi():
     boy = float(input("Boyunuzu metre cinsinden giriniz: "))
     kilo = float(input("Kilonuzu giriniz: "))
