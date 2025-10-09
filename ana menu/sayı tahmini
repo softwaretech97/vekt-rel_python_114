@@ -1,0 +1,14 @@
+def sayı_bilmece():
+    import random
+
+    sayı_tahmini1=int(input('sayı tahmin ediniz'))
+    sayı= random.randint(1,100)
+    if sayı_tahmini1>100:
+        print('100den küçük değer giriniz')
+    elif sayı_tahmini1==sayı:
+        print('tebrikler dogru bildiniz')
+    else:
+        print ('yanlıs tahmin',sayı)
+    
+sayı_bilmece
+    #bu projede 100 ve aşağısındaki sayılar tahmin edilmekte sayı 100den büyükse değer uyarı vermekte tahmin oyunu oynanmaktadır
