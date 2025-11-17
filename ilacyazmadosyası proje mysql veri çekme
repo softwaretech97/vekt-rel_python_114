@@ -13,7 +13,7 @@ import mysql.connector as mysql   # ← MySQL bağlantısı için
 MYSQL_CONFIG = {
     "host": "localhost",
     "user": "root",
-    "password": "12189864",
+    "password": "",
     "database": "eczane",
 }
 
