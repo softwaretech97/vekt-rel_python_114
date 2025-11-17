@@ -1,0 +1,191 @@
+import sys
+import json
+from datetime import date
+from pathlib import Path
+from PyQt6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QFormLayout, QLabel,
+    QLineEdit, QPushButton, QListWidget, QHBoxLayout
+)
+from PyQt6.QtCore import Qt
+import mysql.connector as mysql   # ← MySQL bağlantısı için
+
+# MySQL bağlantı bilgilerini kendine göre düzenle
+MYSQL_CONFIG = {
+    "host": "localhost",
+    "user": "root",
+    "password": "12189864",
+    "database": "eczane",
+}
+
+class IlacEkleFormu(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle('İlaç Kayıt Programı (MySQL’den Çekme)')
+        self.resize(460, 520)
+
+        # Lokal yedek dosyası
+        app_data_dir = Path.home() / "Library" / "Application Support" / "IlacKayitProgrami"
+        app_data_dir.mkdir(parents=True, exist_ok=True)
+        self.veritabani_dosyasi = app_data_dir / "ilac_veritabani.json"
+
+        # Veriler
+        self.kayitlar = self._yukle_kayitlar()
+        self.duzenlenen_index = None
+
+        # ---------- UI ----------
+        ana = QVBoxLayout(self)
+
+        # Kullanıcı adı (filtre için değil, dekoratif)
+        ust = QHBoxLayout()
+        ust.addWidget(QLabel("Kullanıcı Adı:"))
+        self.input_username = QLineEdit()
+        ust.addWidget(self.input_username)
+        self.btn_mysql_cek = QPushButton("MySQL'den ÇEK")
+        self.btn_mysql_cek.clicked.connect(self.mysql_den_cek)
+        ust.addWidget(self.btn_mysql_cek)
+        ana.addLayout(ust)
+
+        # İlaç formu
+        form = QFormLayout()
+        self.input_ilac_adi = QLineEdit()
+        form.addRow(QLabel("İlaç Adı:"), self.input_ilac_adi)
+        ana.addLayout(form)
+
+        # Butonlar
+        btn_row = QHBoxLayout()
+        self.btn_kaydet = QPushButton("KAYDET")
+        self.btn_kaydet.clicked.connect(self.ilaci_kaydet_veya_guncelle)
+        self.btn_temizle = QPushButton("Temizle")
+        self.btn_temizle.clicked.connect(self._formu_temizle)
+        self.btn_duzenle = QPushButton("Düzenle")
+        self.btn_duzenle.clicked.connect(self.duzenlemeyi_baslat)
+        self.btn_sil = QPushButton("Sil")
+        self.btn_sil.clicked.connect(self.secileni_sil)
+        btn_row.addWidget(self.btn_kaydet)
+        btn_row.addWidget(self.btn_temizle)
+        btn_row.addWidget(self.btn_duzenle)
+        btn_row.addWidget(self.btn_sil)
+        ana.addLayout(btn_row)
+
+        # Liste
+        ana.addWidget(QLabel("Kayıtlı İlaçlar:"))
+        self.kayit_listesi = QListWidget()
+        self.kayit_listesi.itemDoubleClicked.connect(self.duzenlemeyi_baslat)
+        ana.addWidget(self.kayit_listesi)
+
+        self._listeyi_guncelle()
+
+    # ---------- MySQL ----------
+    def _mysql_baglanti(self):
+        try:
+            return mysql.connect(**MYSQL_CONFIG)
+        except Exception as e:
+            print("Bağlantı hatası:", e)
+            return None
+
+    def mysql_den_cek(self):
+        """eczane.ilaclar tablosundan ilaç isimlerini çek."""
+        conn = self._mysql_baglanti()
+        if not conn:
+            return
+        try:
+            cur = conn.cursor(dictionary=True)
+            cur.execute("""
+                SELECT 
+                    ad AS ilac_ad, 
+                    CURRENT_DATE AS tarih
+                FROM eczane.ilaclar
+                ORDER BY ad ASC
+            """)
+            rows = cur.fetchall()
+        except Exception as e:
+            print("Sorgu hatası:", e)
+            rows = []
+        finally:
+            try:
+                cur.close()
+                conn.close()
+            except Exception:
+                pass
+
+        self.kayitlar = [
+            {"ad": r["ilac_ad"], "tarih": str(r["tarih"])}
+            for r in rows
+        ]
+        self._kaydet_kayitlar()
+        self._listeyi_guncelle()
+        self._formu_temizle()
+
+    # ---------- Dosya ----------
+    def _yukle_kayitlar(self):
+        if self.veritabani_dosyasi.exists():
+            try:
+                return json.loads(self.veritabani_dosyasi.read_text(encoding="utf-8"))
+            except Exception:
+                return []
+        return []
+
+    def _kaydet_kayitlar(self):
+        self.veritabani_dosyasi.write_text(
+            json.dumps(self.kayitlar, ensure_ascii=False, indent=2),
+            encoding="utf-8"
+        )
+
+    # ---------- Liste / Form ----------
+    def _listeyi_guncelle(self):
+        self.kayit_listesi.clear()
+        for k in self.kayitlar:
+            satir = f"{k['ad']} ({k['tarih']})"
+            self.kayit_listesi.addItem(satir)
+
+    def _formu_temizle(self):
+        self.input_ilac_adi.clear()
+        self.duzenlenen_index = None
+        self.btn_kaydet.setText("KAYDET")
+        self.input_ilac_adi.setFocus()
+
+    # ---------- Ekle / Güncelle ----------
+    def ilaci_kaydet_veya_guncelle(self):
+        ad = self.input_ilac_adi.text().strip()
+        if not ad:
+            return
+        if self.duzenlenen_index is None:
+            self.kayitlar.append({"ad": ad, "tarih": date.today().isoformat()})
+        else:
+            self.kayitlar[self.duzenlenen_index]["ad"] = ad
+
+        self._kaydet_kayitlar()
+        self._listeyi_guncelle()
+        self._formu_temizle()
+
+    def duzenlemeyi_baslat(self):
+        idx = self.kayit_listesi.currentRow()
+        if idx < 0:
+            return
+        k = self.kayitlar[idx]
+        self.input_ilac_adi.setText(k["ad"])
+        self.duzenlenen_index = idx
+        self.btn_kaydet.setText("GÜNCELLE")
+        self.input_ilac_adi.setFocus()
+
+    def secileni_sil(self):
+        idx = self.kayit_listesi.currentRow()
+        if idx < 0:
+            return
+        self.kayitlar.pop(idx)
+        self._kaydet_kayitlar()
+        self._listeyi_guncelle()
+        if self.duzenlenen_index == idx:
+            self._formu_temizle()
+
+    def keyPressEvent(self, e):
+        if e.key() in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
+            if self.kayit_listesi.hasFocus():
+                self.secileni_sil()
+        super().keyPressEvent(e)
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    w = IlacEkleFormu()
+    w.show()
+    sys.exit(app.exec())
